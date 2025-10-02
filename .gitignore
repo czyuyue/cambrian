@@ -1,4 +1,6 @@
 serve_images/
+pretrain/
+alignment_2.5m.jsonl
 
 eval/logs
 eval/**/*.out
