@@ -105,6 +105,7 @@ class ModelArguments:
     num_of_vision_sampler_layers: Optional[int] = field(default=10)
     start_of_vision_sampler_layers: Optional[int] = field(default=16)
     stride_of_vision_sampler_layers: Optional[int] = field(default=1)
+    use_vision_norm: bool = field(default=False)
 
 
 @dataclass
@@ -248,7 +249,7 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer,
     output_dir = os.path.join('checkpoints', output_dir.split(os.sep)[-1])
     if getattr(trainer.args, "tune_mm_mlp_adapter", False):
         # Only save Adapter
-        keys_to_match = ['mm_projector', 'pos_emb', 'vision_sampler', 'vision_sampler_layers', 'vision_query', 'image_newline']
+        keys_to_match = ['mm_projector', 'pos_emb', 'vision_sampler', 'vision_sampler_layers', 'vision_query', 'image_newline', 'vision_norm']
         if getattr(trainer.args, "use_im_start_end", False):
             keys_to_match.extend(['embed_tokens', 'embed_in'])
 
@@ -447,7 +448,7 @@ def preprocess_llama_3(
             
             # System Prompt
             if i == 0:
-                round_len = len(tokenizer(rou).input_ids)
+                round_len = len(tokenizer(rou, add_special_tokens=False).input_ids)
                 # Don't predict system prompt
                 target[cur_len : cur_len + round_len] = IGNORE_INDEX
                 cur_len += round_len
@@ -456,13 +457,13 @@ def preprocess_llama_3(
                 if i==1 and has_image:
                     round_len = len(tokenizer_image_token_llama3(rou, tokenizer))
                 else:
-                    round_len = len(tokenizer(rou).input_ids)
+                    round_len = len(tokenizer(rou, add_special_tokens=False).input_ids)
                 # Don't predict system prompt
                 target[cur_len : cur_len + round_len] = IGNORE_INDEX
                 cur_len += round_len
             # Model Reponse
             elif i % 2 == 0:
-                round_len = len(tokenizer(rou).input_ids)
+                round_len = len(tokenizer(rou, add_special_tokens=False).input_ids)
                 # Don't predict system prompt
                 target[cur_len : cur_len + 3] = IGNORE_INDEX
                 cur_len += round_len
@@ -1621,6 +1622,9 @@ def train(INDEX, attn_implementation=None):
     elif model_args.version == "llama_v3":
         tokenizer.pad_token = "<|reserved_special_token_0|>"
         tokenizer.pad_token_id = 128002
+
+        if model_args.version in conversation_lib.conv_templates:
+            conversation_lib.default_conversation = conversation_lib.conv_templates[model_args.version]
     else:
         tokenizer.pad_token = tokenizer.unk_token
         if model_args.version in conversation_lib.conv_templates:
@@ -1678,7 +1682,7 @@ def train(INDEX, attn_implementation=None):
             model.requires_grad_(False)
             # for p in model.get_model().mm_projector.parameters():
             #     p.requires_grad = True
-            tune_modules = ['mm_projector', 'pos_emb', 'vision_sampler', 'vision_sampler_layers', 'vision_query', 'image_newline']
+            tune_modules = ['mm_projector', 'pos_emb', 'vision_sampler', 'vision_sampler_layers', 'vision_query', 'image_newline', 'vision_norm']
             for name, param in model.named_parameters():
                 if any(listed_name in name for listed_name in tune_modules):
                     print_rank0('tuning {}'.format(name))

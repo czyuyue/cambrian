@@ -30,7 +30,7 @@ python cambrian/train/train_tpu.py \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
-    --use_vision_norm False \
+    --use_vision_norm True \
     --image_aspect_ratio pad \
     --bf16 False \
     --output_dir $CKPT_DIR \
