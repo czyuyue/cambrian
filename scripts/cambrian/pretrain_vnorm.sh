@@ -6,7 +6,7 @@ export WANDB_RESUME="allow" &&
 export CKPT_NAME="cambrian-8b-pretrain" &&
 
 export CKPT_DIR="gs://us-central2-storage/cambrian/checkpoints/$CKPT_NAME" &&
-
+echo "WANDB_ENTITY=$WANDB_ENTITY WANDB_PROJECT=$WANDB_PROJECT \${#WANDB_API_KEY}chars" &&
 python cambrian/train/train_tpu.py \
     --model_name_or_path /home/yuyue/models/Llama-3-8B \
     --version llama_v3 \
