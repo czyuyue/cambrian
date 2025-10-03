@@ -30,6 +30,7 @@ python cambrian/train/train_tpu.py \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
+    --use_vision_norm False \
     --image_aspect_ratio pad \
     --bf16 False \
     --output_dir $CKPT_DIR \
@@ -49,7 +50,7 @@ python cambrian/train/train_tpu.py \
     --tf32 False \
     --model_max_length 2048 \
     --gradient_checkpointing True \
-    --dataloader_num_workers 1 \
+    --dataloader_num_workers 0 \
     --lazy_preprocess True \
     --report_to wandb \
     --run_name $CKPT_NAME \

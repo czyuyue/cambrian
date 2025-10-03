@@ -28,6 +28,7 @@ from .vision_sampler import VisionTokenSampler
 from cambrian.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 
 from cambrian.utils import IS_XLA_AVAILABLE
+from cambrian.mm_utils import RMSNorm
 
 
 class CambrianMetaModel:
@@ -85,6 +86,10 @@ class CambrianMetaModel:
                 self.image_newline = nn.Parameter(
                         torch.empty(config.hidden_size, dtype=self.dtype)
                     )
+            
+            # 添加 vision norm 支持
+            if getattr(config, 'use_vision_norm', False):
+                self.vision_norm = RMSNorm(config.hidden_size)
 
     # def get_vision_tower(self):
     #     vision_tower = getattr(self, 'vision_tower', None)
@@ -109,6 +114,7 @@ class CambrianMetaModel:
         pretrain_mm_mlp_adapter = model_args.pretrain_mm_mlp_adapter
         connector_only = model_args.connector_only
         connector_depth = model_args.connector_depth
+        use_vision_norm = getattr(model_args, 'use_vision_norm', False)
 
         # self.config.mm_vision_tower = vision_tower
         self.config.image_token_len = image_token_len
@@ -136,6 +142,7 @@ class CambrianMetaModel:
         self.config.vision_hidden_size = vision_hidden_size
         self.config.mm_vision_select_layer = mm_vision_select_layer
         self.config.mm_vision_select_feature = mm_vision_select_feature
+        self.config.use_vision_norm = use_vision_norm
 
         if getattr(self, 'mm_projector', None) is None:
 
@@ -179,6 +186,10 @@ class CambrianMetaModel:
             # In case it is frozen by LoRA
             for p in self.mm_projector.parameters():
                 p.requires_grad = True
+        
+        # 初始化 vision norm
+        if use_vision_norm and getattr(self, 'vision_norm', None) is None:
+            self.vision_norm = RMSNorm(self.config.hidden_size)
 
         if pretrain_mm_mlp_adapter is not None:
             mm_projector_weights = torch.load(pretrain_mm_mlp_adapter, map_location='cpu')
@@ -409,6 +420,10 @@ class CambrianMetaForCausalLM(ABC):
 
         image_features = torch.cat(final_image_features_list, -1)
         image_features = self.get_model().mm_projector(image_features).to(dtype)
+        
+        # 在 mm_projector 之后应用 vision norm
+        if getattr(self.get_model().config, 'use_vision_norm', False):
+            image_features = self.get_model().vision_norm(image_features)
 
         if IS_XLA_AVAILABLE:
             image_features = image_features.view(image_features.shape[0], final_height, final_width, -1)

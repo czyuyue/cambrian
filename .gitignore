@@ -1,6 +1,7 @@
 serve_images/
 pretrain/
 alignment_2.5m.jsonl
+Cambrian7M_withsystemprompt.jsonl
 
 eval/logs
 eval/**/*.out
