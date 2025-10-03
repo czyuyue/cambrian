@@ -4,7 +4,9 @@ export PJRT_DEVICE=TPU &&
 export XLA_USE_BF16=0 &&
 export WANDB_RESUME="allow" &&
 export CKPT_NAME="cambrian-8b-pretrain" &&
-
+export WANDB_API_KEY="$WANDB_KEY" && 
+export WANDB_ENTITY=nyu-visionx && 
+export WANDB_PROJECT=cambrian &&
 export CKPT_DIR="gs://us-central2-storage/cambrian/checkpoints/$CKPT_NAME" &&
 
 python cambrian/train/train_tpu.py \
